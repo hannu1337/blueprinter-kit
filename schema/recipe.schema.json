@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blueprinter-kit:recipe:1",
+  "title": "Integration recipe",
+  "description": "`.integration/recipe.json` in a service repository: what the blueprinter needs before it runs any of the service's code. Inputs and checks are not here; the setup CLI's `describe` returns them.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "protocolVersion", "id", "name", "setupCli", "credential", "outputs", "overlay"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "protocolVersion": {
+      "description": "The setup-CLI protocol version the setup CLI speaks.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "id": {
+      "description": "Namespace for check ids, the manifest key and overlay file names.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,39}$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "requires": {
+      "description": "Tool version ranges the setup CLI needs on the machine.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "node": { "type": "string", "minLength": 1 },
+        "pnpm": { "type": "string", "minLength": 1 }
+      }
+    },
+    "setupCli": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "install": {
+          "description": "Shell command run once in the clone before the first call.",
+          "type": "string",
+          "minLength": 1
+        },
+        "entry": {
+          "description": "Shell command prefix; the blueprinter appends `<command> [checkId] [--rotate]`.",
+          "type": "string",
+          "minLength": 1
+        },
+        "timeoutSeconds": {
+          "description": "Per-call timeout.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        }
+      }
+    },
+    "credential": {
+      "description": "Where the blueprinter issues the service bootstrap token for a run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "namespace", "ttlMax"],
+      "properties": {
+        "kind": { "const": "cloudflare-kv" },
+        "namespace": {
+          "description": "The operators KV namespace of each service stage, with the literal `<stage>` placeholder.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*-operators-<stage>$"
+        },
+        "ttlMax": {
+          "description": "Longest token lifetime the service accepts, an ISO 8601 duration from PT1M to PT1H.",
+          "type": "string",
+          "pattern": "^PT(?:\\d+H)?(?:\\d+M)?(?:\\d+S)?$",
+          "minLength": 4
+        }
+      }
+    },
+    "outputs": {
+      "description": "Values a fix returns, per stage. Tenant outputs go to a Worker secret (secret, api|web), wrangler vars (non-secret, api|web) or a CI_SECRET__ GitHub environment secret (ci). Instance outputs may also be non-secret Terraform input (terraform).",
+      "type": "array",
+      "items": { "$ref": "#/$defs/output" }
+    },
+    "overlay": {
+      "description": "Folder of whole files applied through the overlay engine, relative to the repository root.",
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+    }
+  },
+  "$defs": {
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "scope", "secret", "target"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "scope": { "enum": ["tenant", "instance"] },
+        "secret": { "type": "boolean" },
+        "target": { "enum": ["api", "web", "ci", "terraform"] },
+        "description": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "target": { "const": "terraform" } }, "required": ["target"] },
+          "then": { "properties": { "scope": { "const": "instance" }, "secret": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "target": { "const": "ci" } }, "required": ["target"] },
+          "then": { "properties": { "secret": { "const": true } } }
+        }
+      ]
+    }
+  }
+}

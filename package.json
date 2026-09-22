@@ -1,0 +1,52 @@
+{
+  "name": "blueprinter-kit",
+  "version": "1.0.0",
+  "description": "The setup-CLI protocol: types, the serve loop, the recipe JSON Schema, the conformance command and bootstrap-token verification.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.18"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./setup-cli": {
+      "types": "./dist/setup-cli.d.ts",
+      "default": "./dist/setup-cli.js"
+    },
+    "./recipe": {
+      "types": "./dist/recipe.d.ts",
+      "default": "./dist/recipe.js"
+    },
+    "./conformance": {
+      "types": "./dist/conformance.d.ts",
+      "default": "./dist/conformance.js"
+    },
+    "./recipe.schema.json": "./schema/recipe.schema.json",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "blueprinter-kit": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "schema"
+  ],
+  "scripts": {
+    "prepare": "node scripts/prepare.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --test-reporter=spec \"tests/**/*.test.ts\"",
+    "conformance:sample": "node src/cli.ts conformance tests/fixtures/sample",
+    "gates": "npm run typecheck && npm test && npm run build && node dist/cli.js conformance tests/fixtures/sample"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  }
+}

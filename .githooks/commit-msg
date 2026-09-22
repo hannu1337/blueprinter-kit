@@ -1,0 +1,4 @@
+#!/bin/sh
+# Every commit in this repository is a release: message exactly vX.Y.Z,
+# author and committer the owner's GitHub noreply identity.
+exec node "$(dirname "$0")/../scripts/release-rules.ts" commit-msg "$1"

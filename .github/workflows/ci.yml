@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  release-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - run: node scripts/release-rules.ts ci
+
+  gates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: conformance of the sample setup CLI, from the built package
+        run: node dist/cli.js conformance tests/fixtures/sample
+
+  tag:
+    if: github.event_name == 'push'
+    needs: [release-rules, gates]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: tag the release (lightweight)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          existing=""
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${version}" > /dev/null 2>&1; then
+            existing=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${version}" --jq .object.sha)
+          fi
+          if [ -z "$existing" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/git/refs" -f ref="refs/tags/${version}" -f sha="${GITHUB_SHA}" > /dev/null
+            echo "tagged ${version} at ${GITHUB_SHA}"
+          elif [ "$existing" = "$GITHUB_SHA" ]; then
+            echo "${version} already points at ${GITHUB_SHA}"
+          else
+            echo "::error::${version} already exists at ${existing}; bump package.json"
+            exit 1
+          fi

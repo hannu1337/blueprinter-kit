@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 1,
+  "id": "raw",
+  "name": "Raw",
+  "setupCli": {
+    "entry": "node setup-cli.mjs",
+    "timeoutSeconds": 2
+  },
+  "credential": {
+    "kind": "cloudflare-kv",
+    "namespace": "raw-operators-<stage>",
+    "ttlMax": "PT1H"
+  },
+  "outputs": [
+    {
+      "name": "RAW_SECRET",
+      "scope": "tenant",
+      "secret": true,
+      "target": "api"
+    }
+  ],
+  "overlay": ".integration/overlay"
+}

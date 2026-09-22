@@ -1,0 +1,25 @@
+{
+  "$schema": "../../../../schema/recipe.schema.json",
+  "schemaVersion": 1,
+  "protocolVersion": 1,
+  "id": "sample",
+  "name": "Sample",
+  "requires": { "node": ">=22.18" },
+  "setupCli": {
+    "entry": "node setup-cli.ts",
+    "timeoutSeconds": 30
+  },
+  "credential": {
+    "kind": "cloudflare-kv",
+    "namespace": "sample-operators-<stage>",
+    "ttlMax": "PT1H"
+  },
+  "outputs": [
+    { "name": "SAMPLE_CLIENT_SECRET", "scope": "tenant", "secret": true, "target": "api" },
+    { "name": "SAMPLE_TENANT_ID", "scope": "tenant", "secret": false, "target": "web" },
+    { "name": "SAMPLE_CI_KEY", "scope": "tenant", "secret": true, "target": "ci" },
+    { "name": "SAMPLE_RECORDS", "scope": "instance", "secret": false, "target": "terraform" },
+    { "name": "SAMPLE_SIGNING_KEY", "scope": "instance", "secret": true, "target": "api" }
+  ],
+  "overlay": ".integration/overlay"
+}
